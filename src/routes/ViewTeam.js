@@ -7,7 +7,7 @@ import Header from '../components/Header';
 import Messages from '../components/Messages';
 import SendMessage from '../components/SendMessage';
 import AppLayout from '../components/AppLayout';
-import Sidebar from '../containers/SideBar';
+import Sidebar from '../containers/Sidebar';
 import { allTeamsQuery } from '../graphql/team';
 
 const ViewTeam = ({

@@ -1,69 +1,63 @@
 import React from 'react';
-import decode from 'jwt-decode';
+import { graphql } from 'react-apollo';
+import findIndex from 'lodash/findIndex';
+import { Redirect } from 'react-router-dom';
 
-import Channels from '../components/Channels';
-import Teams from '../components/Teams';
-import AddChannelModal from '../components/AddChannelModal';
-import InvitePeopleModal from '../components/InvitePeopleModal';
+import Header from '../components/Header';
+import Messages from '../components/Messages';
+import SendMessage from '../components/SendMessage';
+import AppLayout from '../components/AppLayout';
+import Sidebar from '../containers/Sidebar';
+import { allTeamsQuery } from '../graphql/team';
 
-export default class Sidebar extends React.Component {
-  state = {
-    openAddChannelModal: false,
-    openInvitePeopleModal: false,
-  };
-
-  handleCloseAddChannelModal = () => {
-    this.setState({ openAddChannelModal: false });
-  };
-
-  handleAddChannelClick = () => {
-    this.setState({ openAddChannelModal: true });
-  };
-
-  handleInvitePeopleClick = () => {
-    this.setState({ openInvitePeopleModal: true });
-  };
-
-  handleCloseInvitePeopleModal = () => {
-    this.setState({ openInvitePeopleModal: false });
-  };
-
-  render() {
-    const { teams, team } = this.props;
-    const { openInvitePeopleModal, openAddChannelModal } = this.state;
-
-    let username = '';
-    try {
-      const token = localStorage.getItem('token');
-      const { user } = decode(token);
-      // eslint-disable-next-line prefer-destructuring
-      username = user.username;
-    } catch (err) {}
-
-    return [
-      <Teams key="team-sidebar" teams={teams} />,
-      <Channels
-        key="channels-sidebar"
-        teamName={team.name}
-        username={username}
-        teamId={team.id}
-        channels={team.channels}
-        users={[{ id: 1, name: 'slackbot' }, { id: 2, name: 'user1' }]}
-        onAddChannelClick={this.handleAddChannelClick}
-        onInvitePeopleClick={this.handleInvitePeopleClick}
-      />,
-      <AddChannelModal
-        teamId={team.id}
-        onClose={this.handleCloseAddChannelModal}
-        open={openAddChannelModal}
-        key="sidebar-add-channel-modal"
-      />,
-      <InvitePeopleModal
-        teamId={team.id}
-        onClose={this.handleCloseInvitePeopleModal}
-        open={openInvitePeopleModal}
-        key="invite-people-modal"
-      />,
-    ];
+const ViewTeam = ({
+  data: { loading, allTeams, inviteTeams },
+  match: {
+    params: { teamId, channelId },
+  },
+}) => {
+  if (loading) {
+    return null;
   }
-}
+
+  const teams = [...allTeams, ...inviteTeams];
+
+  if (!teams.length) {
+    return <Redirect to="/create-team" />;
+  }
+
+  const teamIdInteger = parseInt(teamId, 10);
+  const teamIdx = teamIdInteger ? findIndex(teams, ['id', teamIdInteger]) : 0;
+  const team = teamIdx === -1 ? teams[0] : teams[teamIdx];
+
+  const channelIdInteger = parseInt(channelId, 10);
+  const channelIdx = channelIdInteger
+    ? findIndex(team.channels, ['id', channelIdInteger])
+    : 0;
+  const channel =
+    channelIdx === -1 ? team.channels[0] : team.channels[channelIdx];
+
+  return (
+    <AppLayout>
+      <Sidebar
+        teams={teams.map((t) => ({
+          id: t.id,
+          letter: t.name.charAt(0).toUpperCase(),
+        }))}
+        team={team}
+      />
+      {channel && <Header channelName={channel.name} />}
+      {channel && (
+        <Messages channelId={channel.id}>
+          <ul className="message-list">
+            <li />
+            <li />
+          </ul>
+        </Messages>
+      )}
+      {channel && <SendMessage channelName={channel.name} />}
+    </AppLayout>
+  );
+};
+
+export default graphql(allTeamsQuery)(ViewTeam);
